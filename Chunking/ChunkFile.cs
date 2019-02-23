@@ -1,0 +1,71 @@
+﻿using SVN.Core.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace SVN.Network.Chunking
+{
+    internal class ChunkFile
+    {
+        public int Id { get; private set; }
+        private int Length { get; set; }
+        private List<Chunk> Chunks { get; } = new List<Chunk>();
+        private DateTime LastActivity { get; set; } = DateTime.Now;
+
+        public ChunkFile(int id, int length = default(int))
+        {
+            this.Id = id;
+            this.Length = length;
+        }
+
+        public ChunkFile(int id, byte[] bytes)
+        {
+            this.Id = id;
+            this.Length = bytes.Length;
+
+            for (var i = 1; i <= Math.Ceiling((double)this.Length / Settings.ChunkSize); i++)
+            {
+                this.AddChunk(i - 1, bytes.Skip((int)((i - 1) * Settings.ChunkSize)).Take((int)Settings.ChunkSize).ToArray());
+            }
+        }
+
+        public bool IsActive
+        {
+            get => DateTime.Now - this.LastActivity < Settings.Lifetime;
+        }
+
+        public bool HasChunk(int index)
+        {
+            return this.Chunks.Where(x => x.Index == index).Any();
+        }
+
+        public byte[] GetChunk(int index)
+        {
+            this.LastActivity = DateTime.Now;
+            return this.Chunks.Where(x => x.Index == index).Select(x => x.Bytes).FirstOrDefault();
+        }
+
+        public void AddChunk(int index, byte[] bytes)
+        {
+            this.LastActivity = DateTime.Now;
+            this.Chunks.Add(new Chunk(index, bytes));
+        }
+
+        public bool IsBuildable()
+        {
+            var length = (default(int) < this.Length ? this.Length : this.Chunks.Max(x => x.Index) + 1);
+
+            for (var i = 1; i <= length; i++)
+            {
+                if (!this.Chunks.Any(x => x.Index == i - 1)) return false;
+            }
+
+            return true;
+        }
+
+        public byte[] Build()
+        {
+            return this.Chunks.DistinctBy(x => x.Index).OrderBy(x => x.Index).SelectMany(x => x.Bytes).ToArray();
+        }
+    }
+}
