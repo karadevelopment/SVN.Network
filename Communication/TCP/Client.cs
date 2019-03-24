@@ -6,7 +6,7 @@ namespace SVN.Network.Communication.TCP
 {
     public class Client : Controller, IDisposable
     {
-        public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(2);
 
         public Client()
         {

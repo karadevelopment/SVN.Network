@@ -8,6 +8,7 @@ namespace SVN.Network.Communication.TCP
 {
     public class Server : Controller, IDisposable
     {
+        public new bool IsRunning { get; private set; }
         private TcpListener TcpListener { get; set; }
 
         public int ConnectedClients
@@ -26,6 +27,8 @@ namespace SVN.Network.Communication.TCP
 
         public void Start(int port = 10000)
         {
+            this.IsRunning = true;
+
             this.TcpListener = new TcpListener(IPAddress.Any, port);
             this.TcpListener.Start();
 
@@ -34,6 +37,7 @@ namespace SVN.Network.Communication.TCP
 
         public new void Stop()
         {
+            this.IsRunning = false;
             this.TcpListener.Stop();
             base.Stop();
         }
@@ -45,7 +49,7 @@ namespace SVN.Network.Communication.TCP
 
         private void Listener(int port)
         {
-            while (base.IsRunning)
+            while (base.IsRunning && this.IsRunning)
             {
                 try
                 {
