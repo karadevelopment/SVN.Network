@@ -48,16 +48,13 @@
     <Compile Include="Chunking\ChunkManager.cs" />
     <Compile Include="Chunking\Settings.cs" />
     <Compile Include="Communication\Message\IMessage.cs" />
+    <Compile Include="Communication\Message\Ping.cs" />
+    <Compile Include="Communication\Message\Pong.cs" />
     <Compile Include="Communication\TCP\Client.cs" />
     <Compile Include="Communication\TCP\Connection.cs" />
     <Compile Include="Communication\TCP\Controller.cs" />
     <Compile Include="Communication\TCP\Server.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Settings.resx</DependentUpon>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SVN.Core\SVN.Core.csproj">
@@ -72,12 +69,6 @@
       <Project>{5cccf2b2-0f68-4996-8c3d-3b5569ccd9f3}</Project>
       <Name>SVN.Tasks</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Properties\Settings.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="nuget.nuspec" />

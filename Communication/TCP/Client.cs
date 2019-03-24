@@ -23,7 +23,7 @@ namespace SVN.Network.Communication.TCP
             {
                 ReceiveTimeout = (int)this.Timeout.TotalMilliseconds,
             };
-            base.Start(tcpClient);
+            base.Start(tcpClient, true);
             base.LogEvent($"connected to {ip}:{port}");
         }
 

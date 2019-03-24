@@ -1,9 +1,9 @@
 ﻿using Newtonsoft.Json;
 using SVN.Network.Communication.Message;
-using SVN.Network.Properties;
 using SVN.Tasks;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -32,12 +32,17 @@ namespace SVN.Network.Communication.TCP
             };
         }
 
-        private TimeSpan Sleeptime
+        private TimeSpan SleepTime
         {
-            get => TimeSpan.FromMilliseconds(int.Parse(Settings.ThreadSleeptime));
+            get => TimeSpan.FromMilliseconds(10);
         }
 
-        public Connection(Controller controller, TcpClient tcpClient)
+        private TimeSpan PingTime
+        {
+            get => TimeSpan.FromMinutes(1);
+        }
+
+        public Connection(Controller controller, TcpClient tcpClient, bool sendPings)
         {
             this.IsRunning = true;
 
@@ -50,6 +55,11 @@ namespace SVN.Network.Communication.TCP
             TaskContainer.Run(this.Receiver);
             TaskContainer.Run(this.Sender);
             TaskContainer.Run(this.Handler);
+
+            if (sendPings)
+            {
+                TaskContainer.Run(this.PingSender);
+            }
 
             this.Controller.LogConnectionEvent(this.Id, "connected");
         }
@@ -73,7 +83,7 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
-        public void SendObject(IMessage message)
+        public void Send(IMessage message)
         {
             lock (this.Output)
             {
@@ -91,7 +101,7 @@ namespace SVN.Network.Communication.TCP
 
                     if (string.IsNullOrWhiteSpace(data))
                     {
-                        Thread.Sleep(this.Sleeptime);
+                        Thread.Sleep(this.SleepTime);
                         continue;
                     }
 
@@ -103,7 +113,7 @@ namespace SVN.Network.Communication.TCP
                     }
 
                     this.Controller.LogConnectionTransfer(this.Id, $"received data: {data}");
-                    Thread.Sleep(this.Sleeptime);
+                    Thread.Sleep(this.SleepTime);
                 }
                 catch (SocketException)
                 {
@@ -125,7 +135,7 @@ namespace SVN.Network.Communication.TCP
                 {
                     if (!this.Input.Any())
                     {
-                        Thread.Sleep(this.Sleeptime);
+                        Thread.Sleep(this.SleepTime);
                         continue;
                     }
 
@@ -143,7 +153,7 @@ namespace SVN.Network.Communication.TCP
                     this.StreamWriter.Flush();
 
                     this.Controller.LogConnectionTransfer(this.Id, $"sent data: {data}");
-                    Thread.Sleep(this.Sleeptime);
+                    Thread.Sleep(this.SleepTime);
                 }
                 catch (SocketException)
                 {
@@ -165,7 +175,7 @@ namespace SVN.Network.Communication.TCP
                 {
                     if (!this.Input.Any())
                     {
-                        Thread.Sleep(this.Sleeptime);
+                        Thread.Sleep(this.SleepTime);
                         continue;
                     }
 
@@ -177,13 +187,40 @@ namespace SVN.Network.Communication.TCP
                         this.Input.RemoveAt(0);
                     }
 
-                    this.Controller.HandleMessage(this.Id, message);
-                    Thread.Sleep(this.Sleeptime);
+                    if (message is Ping)
+                    {
+                        this.Send(new Pong());
+                    }
+                    else if (message is Pong)
+                    {
+                    }
+                    else
+                    {
+                        this.Controller.HandleMessage(this.Id, message);
+                    }
+
+                    Thread.Sleep(this.SleepTime);
                 }
                 catch (Exception e)
                 {
                     this.Controller.LogConnectionException(this.Id, e);
                 }
+            }
+        }
+
+        private void PingSender()
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            while (this.Controller.IsRunning && this.IsRunning)
+            {
+                if (this.PingTime < stopwatch.Elapsed)
+                {
+                    this.Send(new Ping());
+                    stopwatch.Restart();
+                }
+
+                Thread.Sleep(this.SleepTime);
             }
         }
     }

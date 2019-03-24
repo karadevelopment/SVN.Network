@@ -49,7 +49,7 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    base.Start(this.TcpListener.AcceptTcpClient());
+                    base.Start(this.TcpListener.AcceptTcpClient(), false);
                 }
                 catch (Exception e)
                 {

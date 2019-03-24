@@ -1,5 +1,4 @@
 ﻿using SVN.Network.Communication.Message;
-using SVN.Network.Properties;
 using SVN.Tasks;
 using System;
 using System.Collections.Generic;
@@ -25,22 +24,22 @@ namespace SVN.Network.Communication.TCP
             get => this.Connections.Count;
         }
 
-        private TimeSpan Sleeptime
+        private TimeSpan SleepTime
         {
-            get => TimeSpan.FromMilliseconds(int.Parse(Settings.ThreadSleeptime));
+            get => TimeSpan.FromMilliseconds(10);
         }
 
         protected Controller()
         {
         }
 
-        protected void Start(TcpClient tcpClient)
+        protected void Start(TcpClient tcpClient, bool sendPings)
         {
             this.IsRunning = true;
 
             lock (this.Connections)
             {
-                this.Connections.Add(new Connection(this, tcpClient));
+                this.Connections.Add(new Connection(this, tcpClient, sendPings));
             }
 
             TaskContainer.Run(this.Observer);
@@ -61,7 +60,7 @@ namespace SVN.Network.Communication.TCP
 
                 if (connection is null)
                 {
-                    Thread.Sleep(this.Sleeptime);
+                    Thread.Sleep(this.SleepTime);
                     continue;
                 }
 
@@ -70,7 +69,7 @@ namespace SVN.Network.Communication.TCP
                     this.Connections.Remove(connection);
                 }
 
-                Thread.Sleep(this.Sleeptime);
+                Thread.Sleep(this.SleepTime);
             }
         }
 
@@ -80,7 +79,7 @@ namespace SVN.Network.Communication.TCP
             {
                 foreach (var connection in this.Connections.Where(x => x.IsRunning))
                 {
-                    connection.SendObject(message);
+                    connection.Send(message);
                 }
             }
         }
@@ -91,7 +90,7 @@ namespace SVN.Network.Communication.TCP
             {
                 foreach (var connection in this.Connections.Where(x => x.Id == clientId && x.IsRunning))
                 {
-                    connection.SendObject(message);
+                    connection.Send(message);
                 }
             }
         }
@@ -109,7 +108,7 @@ namespace SVN.Network.Communication.TCP
 
                 if (connection is null)
                 {
-                    Thread.Sleep(this.Sleeptime);
+                    Thread.Sleep(this.SleepTime);
                     continue;
                 }
 
@@ -118,7 +117,7 @@ namespace SVN.Network.Communication.TCP
                     this.Connections.Remove(connection);
                 }
 
-                Thread.Sleep(this.Sleeptime);
+                Thread.Sleep(this.SleepTime);
             }
         }
     }
