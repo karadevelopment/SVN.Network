@@ -49,7 +49,7 @@ namespace SVN.Network.Communication.TCP
 
         private void Listener(int port)
         {
-            while (base.IsRunning && this.IsRunning)
+            while (this.IsRunning)
             {
                 try
                 {

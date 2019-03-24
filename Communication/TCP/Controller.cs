@@ -17,6 +17,7 @@ namespace SVN.Network.Communication.TCP
         public Action<Exception> LogException { get; set; } = exception => { };
         public Action<int, string> LogConnectionEvent { get; set; } = (clientId, message) => { };
         public Action<int, string> LogConnectionTransfer { get; set; } = (clientId, message) => { };
+        public Action<int, string> LogConnectionPing { get; set; } = (clientId, message) => { };
         public Action<int, Exception> LogConnectionException { get; set; } = (clientId, exception) => { };
 
         protected int ConnectionsCount
@@ -47,29 +48,32 @@ namespace SVN.Network.Communication.TCP
 
         protected void Stop()
         {
-            this.IsRunning = false;
-
-            while (this.Connections.Any())
+            if (this.IsRunning)
             {
-                var connection = default(Connection);
+                this.IsRunning = false;
 
-                lock (this.Connections)
+                while (this.Connections.Any())
                 {
-                    connection = this.Connections.FirstOrDefault();
-                }
+                    var connection = default(Connection);
 
-                if (connection is null)
-                {
+                    lock (this.Connections)
+                    {
+                        connection = this.Connections.FirstOrDefault();
+                    }
+
+                    if (connection is null)
+                    {
+                        Thread.Sleep(this.SleepTime);
+                        continue;
+                    }
+
+                    lock (this.Connections)
+                    {
+                        this.Connections.Remove(connection);
+                    }
+
                     Thread.Sleep(this.SleepTime);
-                    continue;
                 }
-
-                lock (this.Connections)
-                {
-                    this.Connections.Remove(connection);
-                }
-
-                Thread.Sleep(this.SleepTime);
             }
         }
 

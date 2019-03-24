@@ -115,6 +115,9 @@ namespace SVN.Network.Communication.TCP
                     this.Controller.LogConnectionTransfer(this.Id, $"received data: {data}");
                     Thread.Sleep(this.SleepTime);
                 }
+                catch (IOException)
+                {
+                }
                 catch (SocketException)
                 {
                     this.Dispose();
@@ -189,10 +192,12 @@ namespace SVN.Network.Communication.TCP
 
                     if (message is Ping)
                     {
+                        this.Controller.LogConnectionPing(this.Id, "ping");
                         this.Send(new Pong());
                     }
                     else if (message is Pong)
                     {
+                        this.Controller.LogConnectionPing(this.Id, "pong");
                     }
                     else
                     {

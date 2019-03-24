@@ -19,12 +19,24 @@ namespace SVN.Network.Communication.TCP
 
         public void Start(string ip = "localhost", int port = 10000)
         {
-            var tcpClient = new TcpClient(ip, port)
+            try
             {
-                ReceiveTimeout = (int)this.Timeout.TotalMilliseconds,
-            };
-            base.Start(tcpClient, true);
-            base.LogEvent($"connected to {ip}:{port}");
+                var tcpClient = new TcpClient(ip, port)
+                {
+                    ReceiveTimeout = (int)this.Timeout.TotalMilliseconds,
+                };
+
+                base.Start(tcpClient, true);
+                base.LogEvent($"connected to {ip}:{port}");
+            }
+            catch (SocketException)
+            {
+                this.Stop();
+            }
+            catch (Exception e)
+            {
+                base.LogException(e);
+            }
         }
 
         public new void Stop()
