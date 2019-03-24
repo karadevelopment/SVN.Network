@@ -1,4 +1,5 @@
-﻿using SVN.Debug;
+﻿using Newtonsoft.Json;
+using SVN.Network.Communication.Message;
 using SVN.Network.Properties;
 using SVN.Tasks;
 using System;
@@ -12,53 +13,67 @@ namespace SVN.Network.Communication.TCP
 {
     internal class Connection : IDisposable
     {
-        private static int Indexer { get; set; }
-        public int Id { get; } = ++Connection.Indexer;
+        private static int Counter { get; set; }
+        public int Id { get; } = ++Connection.Counter;
         public bool IsRunning { get; private set; }
         private Controller Controller { get; }
         private TcpClient TcpClient { get; }
         private NetworkStream NetworkStream { get; }
         private StreamReader StreamReader { get; }
         private StreamWriter StreamWriter { get; }
-        private Action<int, string> Handle { get; }
-        private List<string> Input { get; } = new List<string>();
-        private List<string> Output { get; } = new List<string>();
+        private List<IMessage> Input { get; } = new List<IMessage>();
+        private List<IMessage> Output { get; } = new List<IMessage>();
 
-        public Connection(Controller controller, TcpClient tcpClient, Action<int, string> handle)
+        private JsonSerializerSettings SerializerSettings
+        {
+            get => new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Objects,
+            };
+        }
+
+        private TimeSpan Sleeptime
+        {
+            get => TimeSpan.FromMilliseconds(int.Parse(Settings.ThreadSleeptime));
+        }
+
+        public Connection(Controller controller, TcpClient tcpClient)
         {
             this.IsRunning = true;
+
             this.Controller = controller;
             this.TcpClient = tcpClient;
             this.NetworkStream = this.TcpClient.GetStream();
             this.StreamReader = new StreamReader(this.NetworkStream);
             this.StreamWriter = new StreamWriter(this.NetworkStream);
-            this.Handle = handle;
 
             TaskContainer.Run(this.Receiver);
             TaskContainer.Run(this.Sender);
             TaskContainer.Run(this.Handler);
+
+            this.Controller.LogConnectionEvent(this.Id, "connected");
         }
 
         public void Dispose()
         {
-            this.IsRunning = false;
-            this.StreamReader?.Close();
-            this.StreamReader?.Dispose();
-            this.StreamWriter?.Close();
-            this.StreamWriter?.Dispose();
-            this.NetworkStream?.Close();
-            this.NetworkStream?.Dispose();
-            this.TcpClient?.Close();
-            this.TcpClient?.Dispose();
-            this.Controller.Stop(this);
+            if (this.IsRunning)
+            {
+                this.IsRunning = false;
+
+                this.StreamReader?.Close();
+                this.StreamReader?.Dispose();
+                this.StreamWriter?.Close();
+                this.StreamWriter?.Dispose();
+                this.NetworkStream?.Close();
+                this.NetworkStream?.Dispose();
+                this.TcpClient?.Close();
+                this.TcpClient?.Dispose();
+
+                this.Controller.LogConnectionEvent(this.Id, "disconnected");
+            }
         }
 
-        private TimeSpan ThreadSleeptime
-        {
-            get => TimeSpan.FromMilliseconds(int.Parse(Settings.ThreadSleeptime));
-        }
-
-        public void SendObject(string message)
+        public void SendObject(IMessage message)
         {
             lock (this.Output)
             {
@@ -72,19 +87,23 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    var message = this.StreamReader.ReadLine();
+                    var data = this.StreamReader.ReadLine();
 
-                    if (message is null)
+                    if (string.IsNullOrWhiteSpace(data))
                     {
+                        Thread.Sleep(this.Sleeptime);
                         continue;
                     }
+
+                    var message = JsonConvert.DeserializeObject<IMessage>(data, this.SerializerSettings);
 
                     lock (this.Input)
                     {
                         this.Input.Add(message);
                     }
 
-                    Thread.Sleep(this.ThreadSleeptime);
+                    this.Controller.LogConnectionTransfer(this.Id, $"received data: {data}");
+                    Thread.Sleep(this.Sleeptime);
                 }
                 catch (SocketException)
                 {
@@ -92,7 +111,7 @@ namespace SVN.Network.Communication.TCP
                 }
                 catch (Exception e)
                 {
-                    Logger.Write($"exception in Connection.Receiver: {e}");
+                    this.Controller.LogConnectionException(this.Id, e);
                     this.Dispose();
                 }
             }
@@ -104,26 +123,27 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    if (this.Output.Any())
+                    if (!this.Input.Any())
                     {
-                        var message = default(string);
-
-                        lock (this.Output)
-                        {
-                            message = this.Output.ElementAt(0);
-                            this.Output.RemoveAt(0);
-                        }
-
-                        if (message is null)
-                        {
-                            continue;
-                        }
-
-                        this.StreamWriter.WriteLine(message);
-                        this.StreamWriter.Flush();
+                        Thread.Sleep(this.Sleeptime);
+                        continue;
                     }
 
-                    Thread.Sleep(this.ThreadSleeptime);
+                    var message = default(IMessage);
+
+                    lock (this.Output)
+                    {
+                        message = this.Output.ElementAt(0);
+                        this.Output.RemoveAt(0);
+                    }
+
+                    var data = JsonConvert.SerializeObject(message, this.SerializerSettings);
+
+                    this.StreamWriter.WriteLine(data);
+                    this.StreamWriter.Flush();
+
+                    this.Controller.LogConnectionTransfer(this.Id, $"sent data: {data}");
+                    Thread.Sleep(this.Sleeptime);
                 }
                 catch (SocketException)
                 {
@@ -131,7 +151,7 @@ namespace SVN.Network.Communication.TCP
                 }
                 catch (Exception e)
                 {
-                    Logger.Write($"exception in Connection.Sender: {e}");
+                    this.Controller.LogConnectionException(this.Id, e);
                     this.Dispose();
                 }
             }
@@ -143,30 +163,26 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    if (this.Input.Any())
+                    if (!this.Input.Any())
                     {
-                        var message = default(string);
-
-                        lock (this.Input)
-                        {
-                            message = this.Input.ElementAt(0);
-                            this.Input.RemoveAt(0);
-                        }
-
-                        if (message is null)
-                        {
-                            continue;
-                        }
-
-                        this.Handle(this.Id, message);
+                        Thread.Sleep(this.Sleeptime);
+                        continue;
                     }
 
-                    Thread.Sleep(this.ThreadSleeptime);
+                    var message = default(IMessage);
+
+                    lock (this.Input)
+                    {
+                        message = this.Input.ElementAt(0);
+                        this.Input.RemoveAt(0);
+                    }
+
+                    this.Controller.HandleMessage(this.Id, message);
+                    Thread.Sleep(this.Sleeptime);
                 }
                 catch (Exception e)
                 {
-                    Logger.Write($"exception in Connection.Handler: {e}");
-                    this.Dispose();
+                    this.Controller.LogConnectionException(this.Id, e);
                 }
             }
         }

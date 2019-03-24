@@ -1,4 +1,4 @@
-﻿using SVN.Debug;
+﻿using SVN.Network.Communication.Message;
 using System;
 using System.Net.Sockets;
 
@@ -7,7 +7,6 @@ namespace SVN.Network.Communication.TCP
     public class Client : Controller, IDisposable
     {
         public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
-        public Action<string> Handle { get; set; }
 
         public Client()
         {
@@ -20,31 +19,22 @@ namespace SVN.Network.Communication.TCP
 
         public void Start(string ip = "localhost", int port = 10000)
         {
-            base.IsRunning = true;
-
             var tcpClient = new TcpClient(ip, port)
             {
                 ReceiveTimeout = (int)this.Timeout.TotalMilliseconds,
             };
-            base.Start(tcpClient, this.HandleObject);
-
-            Logger.Write($"connected to {ip}:{port}");
+            base.Start(tcpClient);
+            base.LogEvent($"connected to {ip}:{port}");
         }
 
-        public void Stop()
+        public new void Stop()
         {
-            base.IsRunning = false;
-            base.StopAll();
+            base.Stop();
         }
 
-        public void Send(string message)
+        public new void Send(IMessage message)
         {
-            base.SendObject(message);
-        }
-
-        private void HandleObject(int id, string message)
-        {
-            this.Handle?.Invoke(message);
+            base.Send(message);
         }
     }
 }

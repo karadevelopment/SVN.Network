@@ -1,4 +1,4 @@
-﻿using SVN.Debug;
+﻿using SVN.Network.Communication.Message;
 using SVN.Tasks;
 using System;
 using System.Net;
@@ -9,7 +9,6 @@ namespace SVN.Network.Communication.TCP
     public class Server : Controller, IDisposable
     {
         private TcpListener TcpListener { get; set; }
-        public Action<int, string> Handle { get; set; }
 
         public int ConnectedClients
         {
@@ -27,29 +26,21 @@ namespace SVN.Network.Communication.TCP
 
         public void Start(int port = 10000)
         {
-            base.IsRunning = true;
-
             this.TcpListener = new TcpListener(IPAddress.Any, port);
             this.TcpListener.Start();
 
             TaskContainer.Run(() => this.Listener(port));
         }
 
-        public void Stop()
+        public new void Stop()
         {
-            base.IsRunning = false;
-            base.StopAll();
             this.TcpListener.Stop();
+            base.Stop();
         }
 
-        public void Send(int clientId, string message)
+        public new void Send(int clientId, IMessage message)
         {
-            base.SendObject(clientId, message);
-        }
-
-        private void HandleObject(int clientId, string message)
-        {
-            this.Handle?.Invoke(clientId, message);
+            base.Send(clientId, message);
         }
 
         private void Listener(int port)
@@ -58,11 +49,11 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    base.Start(this.TcpListener.AcceptTcpClient(), this.HandleObject);
+                    base.Start(this.TcpListener.AcceptTcpClient());
                 }
                 catch (Exception e)
                 {
-                    Logger.Write($"exception in Server.Listener: {e.ToString()}");
+                    base.LogException(e);
                     this.Stop();
                 }
             }

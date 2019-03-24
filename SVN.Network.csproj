@@ -30,6 +30,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -44,6 +47,7 @@
     <Compile Include="Chunking\ChunkFile.cs" />
     <Compile Include="Chunking\ChunkManager.cs" />
     <Compile Include="Chunking\Settings.cs" />
+    <Compile Include="Communication\Message\IMessage.cs" />
     <Compile Include="Communication\TCP\Client.cs" />
     <Compile Include="Communication\TCP\Connection.cs" />
     <Compile Include="Communication\TCP\Controller.cs" />
@@ -77,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="nuget.nuspec" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
