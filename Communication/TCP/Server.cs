@@ -6,13 +6,23 @@ using System.Net.Sockets;
 
 namespace SVN.Network.Communication.TCP
 {
-    public class Server : Controller
+    public class Server : Controller, IDisposable
     {
         private TcpListener TcpListener { get; set; }
-        public Action<int, string> Handle { get; set; } = (x, y) => { };
+        public Action<int, string> Handle { get; set; }
+
+        public int ConnectedClients
+        {
+            get => base.ConnectionsCount;
+        }
 
         public Server()
         {
+        }
+
+        public void Dispose()
+        {
+            this.Stop();
         }
 
         public void Start(int port = 10000)
@@ -32,9 +42,14 @@ namespace SVN.Network.Communication.TCP
             this.TcpListener.Stop();
         }
 
-        private void HandleObject(int id, string json)
+        public void Send(int clientId, string json)
         {
-            this.Handle(id, json);
+            base.SendObject(clientId, json);
+        }
+
+        private void HandleObject(int clientId, string json)
+        {
+            this.Handle?.Invoke(clientId, json);
         }
 
         private void Listener(int port)

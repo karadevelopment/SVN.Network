@@ -10,6 +10,11 @@ namespace SVN.Network.Communication.TCP
         public bool IsRunning { get; protected set; }
         private List<Connection> Connections { get; } = new List<Connection>();
 
+        protected int ConnectionsCount
+        {
+            get => this.Connections.Count;
+        }
+
         protected Controller()
         {
         }
@@ -19,6 +24,14 @@ namespace SVN.Network.Communication.TCP
             lock (this.Connections)
             {
                 this.Connections.Add(new Connection(this, tcpClient, handle));
+            }
+        }
+
+        internal void Stop(Connection connection)
+        {
+            lock (this.Connections)
+            {
+                this.Connections.Remove(connection);
             }
         }
 
@@ -44,11 +57,11 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
-        protected void SendObject(int id, string json)
+        protected void SendObject(int clientId, string json)
         {
             lock (this.Connections)
             {
-                foreach (var connection in this.Connections.Where(x => x.Id == id && x.IsRunning))
+                foreach (var connection in this.Connections.Where(x => x.Id == clientId && x.IsRunning))
                 {
                     connection.SendObject(json);
                 }

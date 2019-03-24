@@ -50,6 +50,7 @@ namespace SVN.Network.Communication.TCP
             this.NetworkStream?.Dispose();
             this.TcpClient?.Close();
             this.TcpClient?.Dispose();
+            this.Controller.Stop(this);
         }
 
         private TimeSpan ThreadSleeptime

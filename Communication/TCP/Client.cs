@@ -4,13 +4,18 @@ using System.Net.Sockets;
 
 namespace SVN.Network.Communication.TCP
 {
-    public class Client : Controller
+    public class Client : Controller, IDisposable
     {
         public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
-        public Action<string> Handle { get; set; } = x => { };
+        public Action<string> Handle { get; set; }
 
         public Client()
         {
+        }
+
+        public void Dispose()
+        {
+            this.Stop();
         }
 
         public void Start(string ip = "localhost", int port = 10000)
@@ -34,12 +39,12 @@ namespace SVN.Network.Communication.TCP
 
         public void Send(string json)
         {
-            this.SendObject(json);
+            base.SendObject(json);
         }
 
         private void HandleObject(int id, string json)
         {
-            this.Handle(json);
+            this.Handle?.Invoke(json);
         }
     }
 }
