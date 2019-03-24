@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SVN.Core.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -39,31 +40,31 @@ namespace SVN.Network.Communication.TCP
         {
             lock (this.Connections)
             {
-                foreach (var connection in this.Connections)
+                foreach (var connection in this.Connections.Copy())
                 {
                     connection.Dispose();
                 }
             }
         }
 
-        protected void SendObject(string json)
+        protected void SendObject(string message)
         {
             lock (this.Connections)
             {
                 foreach (var connection in this.Connections.Where(x => x.IsRunning))
                 {
-                    connection.SendObject(json);
+                    connection.SendObject(message);
                 }
             }
         }
 
-        protected void SendObject(int clientId, string json)
+        protected void SendObject(int clientId, string message)
         {
             lock (this.Connections)
             {
                 foreach (var connection in this.Connections.Where(x => x.Id == clientId && x.IsRunning))
                 {
-                    connection.SendObject(json);
+                    connection.SendObject(message);
                 }
             }
         }

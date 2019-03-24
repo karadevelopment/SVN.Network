@@ -37,14 +37,14 @@ namespace SVN.Network.Communication.TCP
             base.StopAll();
         }
 
-        public void Send(string json)
+        public void Send(string message)
         {
-            base.SendObject(json);
+            base.SendObject(message);
         }
 
-        private void HandleObject(int id, string json)
+        private void HandleObject(int id, string message)
         {
-            this.Handle?.Invoke(json);
+            this.Handle?.Invoke(message);
         }
     }
 }

@@ -58,11 +58,11 @@ namespace SVN.Network.Communication.TCP
             get => TimeSpan.FromMilliseconds(int.Parse(Settings.ThreadSleeptime));
         }
 
-        public void SendObject(string json)
+        public void SendObject(string message)
         {
             lock (this.Output)
             {
-                this.Output.Add(json);
+                this.Output.Add(message);
             }
         }
 
@@ -72,16 +72,16 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    var json = this.StreamReader.ReadLine();
+                    var message = this.StreamReader.ReadLine();
 
-                    if (json is null)
+                    if (message is null)
                     {
                         continue;
                     }
 
                     lock (this.Input)
                     {
-                        this.Input.Add(json);
+                        this.Input.Add(message);
                     }
 
                     Thread.Sleep(this.ThreadSleeptime);
@@ -106,20 +106,20 @@ namespace SVN.Network.Communication.TCP
                 {
                     if (this.Output.Any())
                     {
-                        string json;
+                        var message = default(string);
 
                         lock (this.Output)
                         {
-                            json = this.Output.ElementAt(0);
+                            message = this.Output.ElementAt(0);
                             this.Output.RemoveAt(0);
                         }
 
-                        if (json is null)
+                        if (message is null)
                         {
                             continue;
                         }
 
-                        this.StreamWriter.WriteLine(json);
+                        this.StreamWriter.WriteLine(message);
                         this.StreamWriter.Flush();
                     }
 
@@ -145,20 +145,20 @@ namespace SVN.Network.Communication.TCP
                 {
                     if (this.Input.Any())
                     {
-                        string json;
+                        var message = default(string);
 
                         lock (this.Input)
                         {
-                            json = this.Input.ElementAt(0);
+                            message = this.Input.ElementAt(0);
                             this.Input.RemoveAt(0);
                         }
 
-                        if (json is null)
+                        if (message is null)
                         {
                             continue;
                         }
 
-                        this.Handle(this.Id, json);
+                        this.Handle(this.Id, message);
                     }
 
                     Thread.Sleep(this.ThreadSleeptime);

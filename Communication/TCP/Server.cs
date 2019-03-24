@@ -42,14 +42,14 @@ namespace SVN.Network.Communication.TCP
             this.TcpListener.Stop();
         }
 
-        public void Send(int clientId, string json)
+        public void Send(int clientId, string message)
         {
-            base.SendObject(clientId, json);
+            base.SendObject(clientId, message);
         }
 
-        private void HandleObject(int clientId, string json)
+        private void HandleObject(int clientId, string message)
         {
-            this.Handle?.Invoke(clientId, json);
+            this.Handle?.Invoke(clientId, message);
         }
 
         private void Listener(int port)
