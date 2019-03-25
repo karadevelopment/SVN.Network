@@ -1,4 +1,5 @@
-﻿using SVN.Core.Linq;
+﻿using SVN.Core.Format;
+using SVN.Core.Linq;
 using SVN.Network.Communication.Message;
 using SVN.Tasks;
 using System;
@@ -13,6 +14,8 @@ namespace SVN.Network.Communication.TCP
     {
         public bool IsRunning { get; private set; }
         private List<Connection> Connections { get; } = new List<Connection>();
+        public long DownStream { get; internal set; }
+        public long UpStream { get; internal set; }
         public Action<int, IMessage> HandleMessage { get; set; } = (clientId, message) => { };
         public Action<string> HandleEvent { get; set; } = message => { };
         public Action<Exception> HandleException { get; set; } = exception => { };
@@ -25,6 +28,16 @@ namespace SVN.Network.Communication.TCP
         protected int ConnectionsCount
         {
             get => this.Connections.Count;
+        }
+
+        public string DownStreamText
+        {
+            get => this.DownStream.FormatByteSize();
+        }
+
+        public string UpStreamText
+        {
+            get => this.UpStream.FormatByteSize();
         }
 
         private TimeSpan SleepTime

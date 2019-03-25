@@ -114,6 +114,7 @@ namespace SVN.Network.Communication.TCP
                         this.Input.Add(message);
                     }
 
+                    this.Controller.DownStream += data.Length;
                     this.Controller.HandleConnectionTransfer(this.Id, $"received data: {data}");
                     Thread.Sleep(this.SleepTime);
                 }
@@ -162,6 +163,7 @@ namespace SVN.Network.Communication.TCP
                     this.StreamWriter.WriteLine(data);
                     this.StreamWriter.Flush();
 
+                    this.Controller.UpStream += data.Length;
                     this.Controller.HandleConnectionTransfer(this.Id, $"sent data: {data}");
                     Thread.Sleep(this.SleepTime);
                 }
