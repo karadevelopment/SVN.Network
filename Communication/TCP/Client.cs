@@ -17,7 +17,7 @@ namespace SVN.Network.Communication.TCP
             this.Stop();
         }
 
-        public void Start(string ip = "localhost", int port = 10000)
+        public void Start(string ip = "localhost", int port = 10000, bool sendPings = true)
         {
             try
             {
@@ -26,16 +26,18 @@ namespace SVN.Network.Communication.TCP
                     ReceiveTimeout = (int)this.Timeout.TotalMilliseconds,
                 };
 
-                base.Start(tcpClient, true);
-                base.LogEvent($"connected to {ip}:{port}");
+                base.Start(tcpClient, sendPings);
+                base.HandleEvent($"connected to {ip}:{port}");
             }
             catch (SocketException)
             {
+                base.HandleEvent("server is not available");
                 this.Stop();
             }
             catch (Exception e)
             {
-                base.LogException(e);
+                base.HandleException(e);
+                this.Stop();
             }
         }
 
@@ -44,9 +46,9 @@ namespace SVN.Network.Communication.TCP
             base.Stop();
         }
 
-        public new void Send(IMessage message)
+        public void Send(IMessage message)
         {
-            base.Send(message);
+            base.SendAll(message);
         }
     }
 }

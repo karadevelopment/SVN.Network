@@ -61,7 +61,8 @@ namespace SVN.Network.Communication.TCP
                 TaskContainer.Run(this.PingSender);
             }
 
-            this.Controller.LogConnectionEvent(this.Id, "connected");
+            this.Controller.HandleConnectionStart(this.Id);
+            this.Controller.HandleConnectionEvent(this.Id, "connected");
         }
 
         public void Dispose()
@@ -79,7 +80,8 @@ namespace SVN.Network.Communication.TCP
                 this.TcpClient?.Close();
                 this.TcpClient?.Dispose();
 
-                this.Controller.LogConnectionEvent(this.Id, "disconnected");
+                this.Controller.HandleConnectionEnd(this.Id);
+                this.Controller.HandleConnectionEvent(this.Id, "disconnected");
             }
         }
 
@@ -112,11 +114,12 @@ namespace SVN.Network.Communication.TCP
                         this.Input.Add(message);
                     }
 
-                    this.Controller.LogConnectionTransfer(this.Id, $"received data: {data}");
+                    this.Controller.HandleConnectionTransfer(this.Id, $"received data: {data}");
                     Thread.Sleep(this.SleepTime);
                 }
                 catch (IOException)
                 {
+                    this.Dispose();
                 }
                 catch (SocketException)
                 {
@@ -124,7 +127,7 @@ namespace SVN.Network.Communication.TCP
                 }
                 catch (Exception e)
                 {
-                    this.Controller.LogConnectionException(this.Id, e);
+                    this.Controller.HandleConnectionException(this.Id, e);
                     this.Dispose();
                 }
             }
@@ -136,17 +139,21 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    if (!this.Input.Any())
+                    var message = default(IMessage);
+
+                    lock (this.Output)
+                    {
+                        message = this.Output.ElementAtOrDefault(0);
+                    }
+
+                    if (message is null)
                     {
                         Thread.Sleep(this.SleepTime);
                         continue;
                     }
 
-                    var message = default(IMessage);
-
                     lock (this.Output)
                     {
-                        message = this.Output.ElementAt(0);
                         this.Output.RemoveAt(0);
                     }
 
@@ -155,8 +162,12 @@ namespace SVN.Network.Communication.TCP
                     this.StreamWriter.WriteLine(data);
                     this.StreamWriter.Flush();
 
-                    this.Controller.LogConnectionTransfer(this.Id, $"sent data: {data}");
+                    this.Controller.HandleConnectionTransfer(this.Id, $"sent data: {data}");
                     Thread.Sleep(this.SleepTime);
+                }
+                catch (IOException)
+                {
+                    this.Dispose();
                 }
                 catch (SocketException)
                 {
@@ -164,7 +175,7 @@ namespace SVN.Network.Communication.TCP
                 }
                 catch (Exception e)
                 {
-                    this.Controller.LogConnectionException(this.Id, e);
+                    this.Controller.HandleConnectionException(this.Id, e);
                     this.Dispose();
                 }
             }
@@ -176,28 +187,30 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    if (!this.Input.Any())
+                    var message = default(IMessage);
+
+                    lock (this.Input)
+                    {
+                        message = this.Input.ElementAtOrDefault(0);
+                    }
+
+                    if (message is null)
                     {
                         Thread.Sleep(this.SleepTime);
                         continue;
                     }
 
-                    var message = default(IMessage);
-
                     lock (this.Input)
                     {
-                        message = this.Input.ElementAt(0);
                         this.Input.RemoveAt(0);
                     }
 
                     if (message is Ping)
                     {
-                        this.Controller.LogConnectionPing(this.Id, "ping");
                         this.Send(new Pong());
                     }
                     else if (message is Pong)
                     {
-                        this.Controller.LogConnectionPing(this.Id, "pong");
                     }
                     else
                     {
@@ -208,7 +221,7 @@ namespace SVN.Network.Communication.TCP
                 }
                 catch (Exception e)
                 {
-                    this.Controller.LogConnectionException(this.Id, e);
+                    this.Controller.HandleConnectionException(this.Id, e);
                 }
             }
         }

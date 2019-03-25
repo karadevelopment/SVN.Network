@@ -1,4 +1,5 @@
-﻿using SVN.Network.Communication.Message;
+﻿using SVN.Core.Linq;
+using SVN.Network.Communication.Message;
 using SVN.Tasks;
 using System;
 using System.Collections.Generic;
@@ -13,12 +14,13 @@ namespace SVN.Network.Communication.TCP
         public bool IsRunning { get; private set; }
         private List<Connection> Connections { get; } = new List<Connection>();
         public Action<int, IMessage> HandleMessage { get; set; } = (clientId, message) => { };
-        public Action<string> LogEvent { get; set; } = message => { };
-        public Action<Exception> LogException { get; set; } = exception => { };
-        public Action<int, string> LogConnectionEvent { get; set; } = (clientId, message) => { };
-        public Action<int, string> LogConnectionTransfer { get; set; } = (clientId, message) => { };
-        public Action<int, string> LogConnectionPing { get; set; } = (clientId, message) => { };
-        public Action<int, Exception> LogConnectionException { get; set; } = (clientId, exception) => { };
+        public Action<string> HandleEvent { get; set; } = message => { };
+        public Action<Exception> HandleException { get; set; } = exception => { };
+        public Action<int> HandleConnectionStart { get; set; } = clientId => { };
+        public Action<int> HandleConnectionEnd { get; set; } = clientId => { };
+        public Action<int, string> HandleConnectionEvent { get; set; } = (clientId, message) => { };
+        public Action<int, string> HandleConnectionTransfer { get; set; } = (clientId, message) => { };
+        public Action<int, Exception> HandleConnectionException { get; set; } = (clientId, exception) => { };
 
         protected int ConnectionsCount
         {
@@ -32,6 +34,17 @@ namespace SVN.Network.Communication.TCP
 
         protected Controller()
         {
+        }
+
+        protected IEnumerable<int> GetConnectionIdsAsync()
+        {
+            lock (this.Connections)
+            {
+                foreach (var connection in this.Connections.Where(x => x.IsRunning))
+                {
+                    yield return connection.Id;
+                }
+            }
         }
 
         protected void Start(TcpClient tcpClient, bool sendPings)
@@ -52,38 +65,13 @@ namespace SVN.Network.Communication.TCP
             {
                 this.IsRunning = false;
 
-                while (this.Connections.Any())
+                lock (this.Connections)
                 {
-                    var connection = default(Connection);
-
-                    lock (this.Connections)
+                    foreach (var connection in this.Connections.Copy())
                     {
-                        connection = this.Connections.FirstOrDefault();
-                    }
-
-                    if (connection is null)
-                    {
-                        Thread.Sleep(this.SleepTime);
-                        continue;
-                    }
-
-                    lock (this.Connections)
-                    {
+                        connection.Dispose();
                         this.Connections.Remove(connection);
                     }
-
-                    Thread.Sleep(this.SleepTime);
-                }
-            }
-        }
-
-        protected void Send(IMessage message)
-        {
-            lock (this.Connections)
-            {
-                foreach (var connection in this.Connections.Where(x => x.IsRunning))
-                {
-                    connection.Send(message);
                 }
             }
         }
@@ -99,26 +87,39 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
+        protected void SendOthers(int clientId, IMessage message)
+        {
+            lock (this.Connections)
+            {
+                foreach (var connection in this.Connections.Where(x => x.Id != clientId && x.IsRunning))
+                {
+                    connection.Send(message);
+                }
+            }
+        }
+
+        protected void SendAll(IMessage message)
+        {
+            lock (this.Connections)
+            {
+                foreach (var connection in this.Connections.Where(x => x.IsRunning))
+                {
+                    connection.Send(message);
+                }
+            }
+        }
+
         private void Observer()
         {
             while (this.IsRunning)
             {
-                var connection = default(Connection);
-
                 lock (this.Connections)
                 {
-                    connection = this.Connections.FirstOrDefault(x => !x.IsRunning);
-                }
-
-                if (connection is null)
-                {
-                    Thread.Sleep(this.SleepTime);
-                    continue;
-                }
-
-                lock (this.Connections)
-                {
-                    this.Connections.Remove(connection);
+                    foreach (var connection in this.Connections.Where(x => !x.IsRunning).Copy())
+                    {
+                        connection.Dispose();
+                        this.Connections.Remove(connection);
+                    }
                 }
 
                 Thread.Sleep(this.SleepTime);
