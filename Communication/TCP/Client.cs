@@ -8,6 +8,11 @@ namespace SVN.Network.Communication.TCP
     {
         public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(2);
 
+        public new bool IsRunning
+        {
+            get => base.IsRunning && base.HasRunningConnection;
+        }
+
         public Client()
         {
         }

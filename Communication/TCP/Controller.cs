@@ -12,10 +12,11 @@ namespace SVN.Network.Communication.TCP
 {
     public class Controller
     {
-        public bool IsRunning { get; private set; }
+        internal bool IsRunning { get; private set; }
+        internal bool HasRunningConnection { get; private set; }
         private List<Connection> Connections { get; } = new List<Connection>();
-        public long DownStream { get; internal set; }
         public long UpStream { get; internal set; }
+        public long DownStream { get; internal set; }
         public Action<int, IMessage> HandleMessage { get; set; } = (clientId, message) => { };
         public Action<string> HandleEvent { get; set; } = message => { };
         public Action<Exception> HandleException { get; set; } = exception => { };
@@ -67,6 +68,7 @@ namespace SVN.Network.Communication.TCP
             lock (this.Connections)
             {
                 this.Connections.Add(new Connection(this, tcpClient, sendPings));
+                this.HasRunningConnection = this.Connections.Any(x => x.IsRunning);
             }
 
             TaskContainer.Run(this.Observer);
@@ -85,6 +87,18 @@ namespace SVN.Network.Communication.TCP
                         connection.Dispose();
                         this.Connections.Remove(connection);
                     }
+                }
+            }
+        }
+
+        protected void Reset()
+        {
+            lock (this.Connections)
+            {
+                foreach (var connection in this.Connections.Copy())
+                {
+                    connection.Dispose();
+                    this.Connections.Remove(connection);
                 }
             }
         }
@@ -128,6 +142,8 @@ namespace SVN.Network.Communication.TCP
             {
                 lock (this.Connections)
                 {
+                    this.HasRunningConnection = this.Connections.Any(x => x.IsRunning);
+
                     foreach (var connection in this.Connections.Where(x => !x.IsRunning).Copy())
                     {
                         connection.Dispose();

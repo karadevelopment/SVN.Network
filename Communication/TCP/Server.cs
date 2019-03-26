@@ -52,6 +52,11 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
+        public void DisconnectClients()
+        {
+            base.Reset();
+        }
+
         public new void Send(int clientId, IMessage message)
         {
             base.Send(clientId, message);
