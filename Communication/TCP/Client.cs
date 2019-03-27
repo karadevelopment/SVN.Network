@@ -4,8 +4,10 @@ using System.Net.Sockets;
 
 namespace SVN.Network.Communication.TCP
 {
-    public class Client : Controller, IDisposable
+    public class Client : Controller
     {
+        public static Client Instance { get; } = new Client();
+
         public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(2);
 
         public new bool IsRunning
@@ -15,11 +17,6 @@ namespace SVN.Network.Communication.TCP
 
         public Client()
         {
-        }
-
-        public void Dispose()
-        {
-            this.Stop();
         }
 
         public void Start(string ip = "localhost", int port = 10000, bool sendPings = true)
@@ -32,28 +29,18 @@ namespace SVN.Network.Communication.TCP
                 };
 
                 base.Start(tcpClient, sendPings);
-                base.HandleEvent($"connected to {ip}:{port}");
-            }
-            catch (SocketException)
-            {
-                base.HandleEvent("server is not available");
-                this.Stop();
+                base.OnInitializationSuccess(ip, port);
             }
             catch (Exception e)
             {
-                base.HandleException(e);
+                base.OnInitializationFailed(ip, port, e);
                 this.Stop();
             }
-        }
-
-        public new void Stop()
-        {
-            base.Stop();
         }
 
         public void Send(IMessage message)
         {
-            base.SendAll(message);
+            base.SendToAll(message);
         }
     }
 }

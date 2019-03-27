@@ -1,45 +1,42 @@
 ﻿using SVN.Network.Communication.Message;
 using SVN.Tasks;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 
 namespace SVN.Network.Communication.TCP
 {
-    public class Server : Controller, IDisposable
+    public class Server : Controller
     {
+        public static Server Instance { get; } = new Server();
+
         public new bool IsRunning { get; private set; }
         private TcpListener TcpListener { get; set; }
-
-        public int Clients
-        {
-            get => base.ConnectionsCount;
-        }
-
-        public List<int> ClientIds
-        {
-            get => base.GetConnectionIdsAsync().ToList();
-        }
 
         public Server()
         {
         }
 
-        public void Dispose()
-        {
-            this.Stop();
-        }
-
         public void Start(int port = 10000, bool sendPings = false)
         {
-            this.IsRunning = true;
+            if (!this.IsRunning)
+            {
+                try
+                {
+                    this.IsRunning = true;
 
-            this.TcpListener = new TcpListener(IPAddress.Any, port);
-            this.TcpListener.Start();
+                    this.TcpListener = new TcpListener(IPAddress.Any, port);
+                    this.TcpListener.Start();
 
-            TaskContainer.Run(() => this.Listener(port, sendPings));
+                    TaskContainer.Run(() => this.Listener(port, sendPings));
+                    base.OnInitializationSuccess("localhost", port);
+                }
+                catch (Exception e)
+                {
+                    base.OnInitializationFailed("localhost", port, e);
+                    this.Stop();
+                }
+            }
         }
 
         public new void Stop()
@@ -47,14 +44,10 @@ namespace SVN.Network.Communication.TCP
             if (this.IsRunning)
             {
                 this.IsRunning = false;
+
                 this.TcpListener.Stop();
                 base.Stop();
             }
-        }
-
-        public void DisconnectClients()
-        {
-            base.Reset();
         }
 
         public new void Send(int clientId, IMessage message)
@@ -62,14 +55,14 @@ namespace SVN.Network.Communication.TCP
             base.Send(clientId, message);
         }
 
-        public new void SendOthers(int clientId, IMessage message)
+        public new void SendToOthers(int clientId, IMessage message)
         {
-            base.SendOthers(clientId, message);
+            base.SendToOthers(clientId, message);
         }
 
-        public new void SendAll(IMessage message)
+        public new void SendToAll(IMessage message)
         {
-            base.SendAll(message);
+            base.SendToAll(message);
         }
 
         private void Listener(int port, bool sendPings)
@@ -86,7 +79,7 @@ namespace SVN.Network.Communication.TCP
                 }
                 catch (Exception e)
                 {
-                    base.HandleException(e);
+                    base.OnUnhandledException(e);
                     this.Stop();
                 }
             }

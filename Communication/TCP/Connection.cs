@@ -11,7 +11,7 @@ using System.Threading;
 
 namespace SVN.Network.Communication.TCP
 {
-    internal class Connection : IDisposable
+    internal class Connection
     {
         private static int Counter { get; set; }
         public int Id { get; } = ++Connection.Counter;
@@ -37,35 +37,35 @@ namespace SVN.Network.Communication.TCP
             get => TimeSpan.FromMilliseconds(10);
         }
 
-        private TimeSpan PingTime
+        public Connection(Controller controller, TcpClient tcpClient)
         {
-            get => TimeSpan.FromMinutes(1);
-        }
-
-        public Connection(Controller controller, TcpClient tcpClient, bool sendPings)
-        {
-            this.IsRunning = true;
-
             this.Controller = controller;
             this.TcpClient = tcpClient;
             this.NetworkStream = this.TcpClient.GetStream();
             this.StreamReader = new StreamReader(this.NetworkStream);
             this.StreamWriter = new StreamWriter(this.NetworkStream);
-
-            TaskContainer.Run(this.Receiver);
-            TaskContainer.Run(this.Sender);
-            TaskContainer.Run(this.Handler);
-
-            if (sendPings)
-            {
-                TaskContainer.Run(this.PingSender);
-            }
-
-            this.Controller.HandleConnectionStart(this.Id);
-            this.Controller.HandleConnectionEvent(this.Id, "connected");
         }
 
-        public void Dispose()
+        public void Start(bool sendPings)
+        {
+            if (!this.IsRunning)
+            {
+                this.IsRunning = true;
+
+                TaskContainer.Run(this.Receiver);
+                TaskContainer.Run(this.Sender);
+                TaskContainer.Run(this.Handler);
+
+                if (sendPings)
+                {
+                    TaskContainer.Run(this.PingSender);
+                }
+
+                this.Controller.OnConnectionStart(this.Id);
+            }
+        }
+
+        public void Stop()
         {
             if (this.IsRunning)
             {
@@ -80,8 +80,7 @@ namespace SVN.Network.Communication.TCP
                 this.TcpClient?.Close();
                 this.TcpClient?.Dispose();
 
-                this.Controller.HandleConnectionEnd(this.Id);
-                this.Controller.HandleConnectionEvent(this.Id, "disconnected");
+                this.Controller.OnConnectionStop(this.Id);
             }
         }
 
@@ -114,22 +113,22 @@ namespace SVN.Network.Communication.TCP
                         this.Input.Add(message);
                     }
 
-                    this.Controller.DownStream += data.Length;
-                    this.Controller.HandleConnectionTransfer(this.Id, $"received data: {data}");
+                    this.Controller.DownTraffic += data.Length;
+                    this.Controller.OnConnectionReceivedMessage(this.Id, data);
                     Thread.Sleep(this.SleepTime);
                 }
                 catch (IOException)
                 {
-                    this.Dispose();
+                    this.Stop();
                 }
                 catch (SocketException)
                 {
-                    this.Dispose();
+                    this.Stop();
                 }
                 catch (Exception e)
                 {
-                    this.Controller.HandleConnectionException(this.Id, e);
-                    this.Dispose();
+                    this.Controller.OnUnhandledException(e);
+                    this.Stop();
                 }
             }
         }
@@ -163,22 +162,22 @@ namespace SVN.Network.Communication.TCP
                     this.StreamWriter.WriteLine(data);
                     this.StreamWriter.Flush();
 
-                    this.Controller.UpStream += data.Length;
-                    this.Controller.HandleConnectionTransfer(this.Id, $"sent data: {data}");
+                    this.Controller.UpTraffic += data.Length;
+                    this.Controller.OnConnectionSentMessage(this.Id, data);
                     Thread.Sleep(this.SleepTime);
                 }
                 catch (IOException)
                 {
-                    this.Dispose();
+                    this.Stop();
                 }
                 catch (SocketException)
                 {
-                    this.Dispose();
+                    this.Stop();
                 }
                 catch (Exception e)
                 {
-                    this.Controller.HandleConnectionException(this.Id, e);
-                    this.Dispose();
+                    this.Controller.OnUnhandledException(e);
+                    this.Stop();
                 }
             }
         }
@@ -216,14 +215,14 @@ namespace SVN.Network.Communication.TCP
                     }
                     else
                     {
-                        this.Controller.HandleMessage(this.Id, message);
+                        this.Controller.OnConnectionHandleMessage(this.Id, message);
                     }
 
                     Thread.Sleep(this.SleepTime);
                 }
                 catch (Exception e)
                 {
-                    this.Controller.HandleConnectionException(this.Id, e);
+                    this.Controller.OnUnhandledException(e);
                 }
             }
         }
@@ -234,7 +233,7 @@ namespace SVN.Network.Communication.TCP
 
             while (this.Controller.IsRunning && this.IsRunning)
             {
-                if (this.PingTime < stopwatch.Elapsed)
+                if (TimeSpan.FromMinutes(1) <= stopwatch.Elapsed)
                 {
                     this.Send(new Ping());
                     stopwatch.Restart();
