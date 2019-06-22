@@ -21,8 +21,8 @@ namespace SVN.Network.Communication.TCP
         private NetworkStream NetworkStream { get; }
         private StreamReader StreamReader { get; }
         private StreamWriter StreamWriter { get; }
-        private List<IMessage> Input { get; } = new List<IMessage>();
-        private List<IMessage> Output { get; } = new List<IMessage>();
+        private List<object> Input { get; } = new List<object>();
+        private List<object> Output { get; } = new List<object>();
 
         private JsonSerializerSettings SerializerSettings
         {
@@ -84,7 +84,7 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
-        public void Send(IMessage message)
+        public void Send(object message)
         {
             lock (this.Output)
             {
@@ -106,7 +106,7 @@ namespace SVN.Network.Communication.TCP
                         continue;
                     }
 
-                    var message = JsonConvert.DeserializeObject<IMessage>(data, this.SerializerSettings);
+                    var message = JsonConvert.DeserializeObject<object>(data, this.SerializerSettings);
 
                     lock (this.Input)
                     {
@@ -139,7 +139,7 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    var message = default(IMessage);
+                    var message = default(object);
 
                     lock (this.Output)
                     {
@@ -188,7 +188,7 @@ namespace SVN.Network.Communication.TCP
             {
                 try
                 {
-                    var message = default(IMessage);
+                    var message = default(object);
 
                     lock (this.Input)
                     {

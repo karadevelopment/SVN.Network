@@ -1,5 +1,4 @@
-﻿using SVN.Network.Communication.Message;
-using System;
+﻿using System;
 using System.Net.Sockets;
 
 namespace SVN.Network.Communication.TCP
@@ -38,7 +37,7 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
-        public void Send(IMessage message)
+        public void Send(object message)
         {
             base.SendToAll(message);
         }

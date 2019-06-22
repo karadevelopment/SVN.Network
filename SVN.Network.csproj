@@ -47,7 +47,6 @@
     <Compile Include="Chunking\ChunkFile.cs" />
     <Compile Include="Chunking\ChunkManager.cs" />
     <Compile Include="Chunking\Settings.cs" />
-    <Compile Include="Communication\Message\IMessage.cs" />
     <Compile Include="Communication\Message\Ping.cs" />
     <Compile Include="Communication\Message\Pong.cs" />
     <Compile Include="Communication\TCP\Client.cs" />

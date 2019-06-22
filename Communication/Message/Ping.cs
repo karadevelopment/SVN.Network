@@ -1,6 +1,6 @@
 ﻿namespace SVN.Network.Communication.Message
 {
-    public class Ping : IMessage
+    public class Ping
     {
     }
 }

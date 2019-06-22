@@ -1,5 +1,4 @@
-﻿using SVN.Network.Communication.Message;
-using SVN.Tasks;
+﻿using SVN.Tasks;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -50,17 +49,17 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
-        public new void Send(int clientId, IMessage message)
+        public new void Send(int clientId, object message)
         {
             base.Send(clientId, message);
         }
 
-        public new void SendToOthers(int clientId, IMessage message)
+        public new void SendToOthers(int clientId, object message)
         {
             base.SendToOthers(clientId, message);
         }
 
-        public new void SendToAll(IMessage message)
+        public new void SendToAll(object message)
         {
             base.SendToAll(message);
         }
