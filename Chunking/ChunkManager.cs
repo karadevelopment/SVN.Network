@@ -7,21 +7,20 @@ namespace SVN.Network.Chunking
     {
         private static List<ChunkFile> Files { get; } = new List<ChunkFile>();
 
-        public static bool HasFile(int id)
+        public static bool HasFile(string identifier)
         {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
-            return (file != null);
+            return ChunkManager.Files.Any(x => x.Identifier == identifier);
         }
 
-        public static bool HasChunk(int id, int index)
+        public static bool HasChunk(string identifier, int index)
         {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
-            return (file != null && file.HasChunk(index));
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
+            return file != null && file.HasChunk(index);
         }
 
-        public static byte[] GetChunk(int id, int index)
+        public static byte[] GetChunk(string identifier, int index)
         {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
 
             if (file != null)
             {
@@ -31,37 +30,47 @@ namespace SVN.Network.Chunking
             return new byte[0];
         }
 
-        public static void AddChunk(int id, int index, byte[] bytes)
+        public static void AddFile(string identifier)
         {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
 
-            if (file == null)
+            if (file is null)
             {
-                ChunkManager.Files.Add(file = new ChunkFile(id));
+                ChunkManager.Files.Add(new ChunkFile(identifier));
+            }
+        }
+
+        public static void AddFile(string identifier, byte[] bytes)
+        {
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
+
+            if (file is null)
+            {
+                ChunkManager.Files.Add(new ChunkFile(identifier, bytes));
+            }
+        }
+
+        public static void AddChunk(string identifier, int index, byte[] bytes)
+        {
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
+
+            if (file is null)
+            {
+                ChunkManager.Files.Add(file = new ChunkFile(identifier));
             }
 
             file.AddChunk(index, bytes);
         }
 
-        public static void AddFile(int id, byte[] bytes)
+        public static bool IsBuildable(string identifier)
         {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
-
-            if (file == null)
-            {
-                ChunkManager.Files.Add(new ChunkFile(id, bytes));
-            }
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
+            return file != null && file.IsBuildable();
         }
 
-        public static bool IsBuildable(int id)
+        public static byte[] Build(string identifier)
         {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
-            return (file != null && file.IsBuildable());
-        }
-
-        public static byte[] Build(int id)
-        {
-            var file = ChunkManager.Files.FirstOrDefault(x => x.Id == id);
+            var file = ChunkManager.Files.FirstOrDefault(x => x.Identifier == identifier);
 
             if (file != null && file.IsBuildable())
             {

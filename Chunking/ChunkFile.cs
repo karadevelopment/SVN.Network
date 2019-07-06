@@ -7,20 +7,20 @@ namespace SVN.Network.Chunking
 {
     internal class ChunkFile
     {
-        public int Id { get; private set; }
+        public string Identifier { get; private set; }
         private int Length { get; set; }
         private List<Chunk> Chunks { get; } = new List<Chunk>();
         private DateTime LastActivity { get; set; } = DateTime.Now;
 
-        public ChunkFile(int id, int length = default(int))
+        public ChunkFile(string identifier, int length = default(int))
         {
-            this.Id = id;
+            this.Identifier = identifier;
             this.Length = length;
         }
 
-        public ChunkFile(int id, byte[] bytes)
+        public ChunkFile(string identifier, byte[] bytes)
         {
-            this.Id = id;
+            this.Identifier = identifier;
             this.Length = bytes.Length;
 
             for (var i = 1; i <= Math.Ceiling((double)this.Length / Settings.ChunkSize); i++)
@@ -36,7 +36,7 @@ namespace SVN.Network.Chunking
 
         public bool HasChunk(int index)
         {
-            return this.Chunks.Where(x => x.Index == index).Any();
+            return this.Chunks.Any(x => x.Index == index);
         }
 
         public byte[] GetChunk(int index)
@@ -53,11 +53,14 @@ namespace SVN.Network.Chunking
 
         public bool IsBuildable()
         {
-            var length = (default(int) < this.Length ? this.Length : this.Chunks.Max(x => x.Index) + 1);
+            var length = default(int) < this.Length ? this.Length : this.Chunks.Max(x => x.Index) + 1;
 
             for (var i = 1; i <= length; i++)
             {
-                if (!this.Chunks.Any(x => x.Index == i - 1)) return false;
+                if (!this.Chunks.Any(x => x.Index == i - 1))
+                {
+                    return false;
+                }
             }
 
             return true;
