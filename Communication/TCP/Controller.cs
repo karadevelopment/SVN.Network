@@ -1,4 +1,5 @@
 ﻿using SVN.Core.Format;
+using SVN.Core.Linq;
 using SVN.Tasks;
 using System;
 using System.Collections.Generic;
@@ -23,6 +24,7 @@ namespace SVN.Network.Communication.TCP
         public Action<int, string> OnConnectionSentMessage { get; set; } = (clientId, message) => { };
         public Action<int, object> OnConnectionHandleMessage { get; set; } = (clientId, message) => { };
         public Action<Exception> OnUnhandledException { get; set; } = exception => { };
+        public Action<object> OnLog { get; set; } = message => { };
 
         public int ConnectionsAlive
         {
@@ -60,14 +62,11 @@ namespace SVN.Network.Communication.TCP
             TaskContainer.ExceptionHandler = this.OnUnhandledException;
         }
 
-        protected void Start(TcpClient tcpClient, bool sendPings)
+        protected void Start()
         {
             if (!this.IsRunning)
             {
                 this.IsRunning = true;
-
-                var connection = new Connection(this, tcpClient);
-                connection.Start(sendPings);
                 TaskContainer.Run(this.Observer);
             }
         }
@@ -77,25 +76,45 @@ namespace SVN.Network.Communication.TCP
             if (this.IsRunning)
             {
                 this.IsRunning = false;
-
-                lock (this.Connections)
-                {
-                    foreach (var connection in this.Connections)
-                    {
-                        connection.Stop();
-                    }
-                }
+                this.StopConnection();
             }
         }
 
         public void Reset()
         {
+            this.StopConnection();
+        }
+
+        internal void StartConnection(TcpClient tcpClient)
+        {
+            this.StartConnection(new Connection(this, tcpClient));
+        }
+
+        internal void StartConnection(Connection connection)
+        {
             lock (this.Connections)
             {
-                foreach (var connection in this.Connections)
+                connection.Start();
+                this.Connections.Add(connection);
+            }
+        }
+
+        internal void StopConnection()
+        {
+            lock (this.Connections)
+            {
+                foreach (var connection in this.Connections.Copy())
                 {
                     connection.Stop();
                 }
+            }
+        }
+
+        internal void StopConnection(Connection connection)
+        {
+            lock (this.Connections)
+            {
+                connection.Stop();
             }
         }
 
@@ -138,32 +157,14 @@ namespace SVN.Network.Communication.TCP
             {
                 lock (this.Connections)
                 {
-                    foreach (var connection in this.Connections.Where(x => !x.IsRunning))
+                    foreach (var connection in this.Connections.Where(x => !x.IsRunning).Copy())
                     {
-                        connection.Stop();
+                        this.Connections.Remove(connection);
                     }
                 }
 
                 Thread.Sleep(this.SleepTime);
             }
-        }
-
-        internal void OnConnectionStartInternal(Connection connection)
-        {
-            lock (this.Connections)
-            {
-                this.Connections.Add(connection);
-            }
-            this.OnConnectionStart(connection.Id);
-        }
-
-        internal void OnConnectionStopInternal(Connection connection)
-        {
-            lock (this.Connections)
-            {
-                this.Connections.Remove(connection);
-            }
-            this.OnConnectionStop(connection.Id);
         }
     }
 }

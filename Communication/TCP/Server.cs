@@ -16,7 +16,7 @@ namespace SVN.Network.Communication.TCP
         {
         }
 
-        public void Start(int port = 10000, bool sendPings = false)
+        public void Start(int port = 10000)
         {
             if (!this.IsRunning)
             {
@@ -27,7 +27,8 @@ namespace SVN.Network.Communication.TCP
                     this.TcpListener = new TcpListener(IPAddress.Any, port);
                     this.TcpListener.Start();
 
-                    TaskContainer.Run(() => this.Listener(port, sendPings));
+                    base.Start();
+                    TaskContainer.Run(() => this.Listener(port));
                     base.OnInitializationSuccess("localhost", port);
                 }
                 catch (Exception e)
@@ -64,13 +65,13 @@ namespace SVN.Network.Communication.TCP
             base.SendToAll(message);
         }
 
-        private void Listener(int port, bool sendPings)
+        private void Listener(int port)
         {
             while (this.IsRunning)
             {
                 try
                 {
-                    base.Start(this.TcpListener.AcceptTcpClient(), sendPings);
+                    base.StartConnection(this.TcpListener.AcceptTcpClient());
                 }
                 catch (SocketException)
                 {

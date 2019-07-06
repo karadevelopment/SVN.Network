@@ -21,6 +21,7 @@ namespace SVN.Network.Communication.TCP
         private NetworkStream NetworkStream { get; }
         private StreamReader StreamReader { get; }
         private StreamWriter StreamWriter { get; }
+        private Stopwatch PingStopwatch { get; set; }
         private List<object> Input { get; } = new List<object>();
         private List<object> Output { get; } = new List<object>();
 
@@ -30,6 +31,11 @@ namespace SVN.Network.Communication.TCP
             {
                 TypeNameHandling = TypeNameHandling.Objects,
             };
+        }
+
+        private TimeSpan PingTimeout
+        {
+            get => TimeSpan.FromSeconds(30);
         }
 
         private TimeSpan SleepTime
@@ -46,7 +52,7 @@ namespace SVN.Network.Communication.TCP
             this.StreamWriter = new StreamWriter(this.NetworkStream);
         }
 
-        public void Start(bool sendPings)
+        public void Start()
         {
             if (!this.IsRunning)
             {
@@ -55,11 +61,8 @@ namespace SVN.Network.Communication.TCP
                 TaskContainer.Run(this.Receiver);
                 TaskContainer.Run(this.Sender);
                 TaskContainer.Run(this.Handler);
-
-                if (sendPings)
-                {
-                    TaskContainer.Run(this.PingSender);
-                }
+                TaskContainer.Run(this.PingReceiver);
+                TaskContainer.Run(this.PingSender);
 
                 this.Controller.OnConnectionStart(this.Id);
             }
@@ -114,7 +117,17 @@ namespace SVN.Network.Communication.TCP
                     }
 
                     this.Controller.DownTraffic += data.Length;
-                    this.Controller.OnConnectionReceivedMessage(this.Id, data);
+                    if (message is Ping)
+                    {
+                    }
+                    else if (message is Pong)
+                    {
+                    }
+                    else
+                    {
+                        this.Controller.OnConnectionReceivedMessage(this.Id, data);
+                    }
+
                     Thread.Sleep(this.SleepTime);
                 }
                 catch (IOException)
@@ -163,7 +176,17 @@ namespace SVN.Network.Communication.TCP
                     this.StreamWriter.Flush();
 
                     this.Controller.UpTraffic += data.Length;
-                    this.Controller.OnConnectionSentMessage(this.Id, data);
+                    if (message is Ping)
+                    {
+                    }
+                    else if (message is Pong)
+                    {
+                    }
+                    else
+                    {
+                        this.Controller.OnConnectionSentMessage(this.Id, data);
+                    }
+
                     Thread.Sleep(this.SleepTime);
                 }
                 catch (IOException)
@@ -209,9 +232,12 @@ namespace SVN.Network.Communication.TCP
                     if (message is Ping)
                     {
                         this.Send(new Pong());
+                        this.Controller.OnLog("received ping");
                     }
                     else if (message is Pong)
                     {
+                        this.PingStopwatch.Restart();
+                        this.Controller.OnLog("received pong");
                     }
                     else
                     {
@@ -227,13 +253,28 @@ namespace SVN.Network.Communication.TCP
             }
         }
 
+        private void PingReceiver()
+        {
+            this.PingStopwatch = Stopwatch.StartNew();
+
+            while (this.Controller.IsRunning && this.IsRunning)
+            {
+                if (this.PingTimeout <= this.PingStopwatch.Elapsed)
+                {
+                    this.Stop();
+                }
+
+                Thread.Sleep(this.SleepTime);
+            }
+        }
+
         private void PingSender()
         {
             var stopwatch = Stopwatch.StartNew();
 
             while (this.Controller.IsRunning && this.IsRunning)
             {
-                if (TimeSpan.FromMinutes(1) <= stopwatch.Elapsed)
+                if (TimeSpan.FromSeconds(10) <= stopwatch.Elapsed)
                 {
                     this.Send(new Ping());
                     stopwatch.Restart();

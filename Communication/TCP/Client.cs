@@ -18,7 +18,7 @@ namespace SVN.Network.Communication.TCP
         {
         }
 
-        public void Start(string ip = "localhost", int port = 10000, bool sendPings = true)
+        public void Start(string ip = "localhost", int port = 10000)
         {
             try
             {
@@ -27,13 +27,14 @@ namespace SVN.Network.Communication.TCP
                     ReceiveTimeout = (int)this.Timeout.TotalMilliseconds,
                 };
 
-                base.Start(tcpClient, sendPings);
+                base.Start();
+                base.StartConnection(tcpClient);
                 base.OnInitializationSuccess(ip, port);
             }
             catch (Exception e)
             {
                 base.OnInitializationFailed(ip, port, e);
-                this.Stop();
+                base.Stop();
             }
         }
 
