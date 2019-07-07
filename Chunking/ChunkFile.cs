@@ -36,19 +36,28 @@ namespace SVN.Network.Chunking
 
         public bool HasChunk(int index)
         {
-            return this.Chunks.Any(x => x.Index == index);
+            lock (this.Chunks)
+            {
+                return this.Chunks.Any(x => x.Index == index);
+            }
         }
 
         public byte[] GetChunk(int index)
         {
-            this.LastActivity = DateTime.Now;
-            return this.Chunks.Where(x => x.Index == index).Select(x => x.Bytes).FirstOrDefault();
+            lock (this.Chunks)
+            {
+                this.LastActivity = DateTime.Now;
+                return this.Chunks.Where(x => x.Index == index).Select(x => x.Bytes).FirstOrDefault();
+            }
         }
 
         public void AddChunk(int index, byte[] bytes)
         {
-            this.LastActivity = DateTime.Now;
-            this.Chunks.Add(new Chunk(index, bytes));
+            lock (this.Chunks)
+            {
+                this.LastActivity = DateTime.Now;
+                this.Chunks.Add(new Chunk(index, bytes));
+            }
         }
 
         public bool IsBuildable()
@@ -57,9 +66,12 @@ namespace SVN.Network.Chunking
 
             for (var i = 1; i <= length; i++)
             {
-                if (!this.Chunks.Any(x => x.Index == i - 1))
+                lock (this.Chunks)
                 {
-                    return false;
+                    if (!this.Chunks.Any(x => x.Index == i - 1))
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -68,7 +80,10 @@ namespace SVN.Network.Chunking
 
         public byte[] Build()
         {
-            return this.Chunks.DistinctBy(x => x.Index).OrderBy(x => x.Index).SelectMany(x => x.Bytes).ToArray();
+            lock (this.Chunks)
+            {
+                return this.Chunks.DistinctBy(x => x.Index).OrderBy(x => x.Index).SelectMany(x => x.Bytes).ToArray();
+            }
         }
     }
 }
